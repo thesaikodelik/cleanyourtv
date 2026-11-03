@@ -198,6 +198,12 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     private TextView stats;
     private List<RaceWeekend.Race> raceCalendar;
     private View racePanel;
+    /** Continue watching, from the system's Watch Next table (WatchNextRow), above the dock. */
+    private WatchNextRow watchNext;
+    /** The row sits above the dock: the dock is parked at the bottom with no room under it. */
+    private boolean watchNextAbove;
+    /** The focused dock app's preview channel, one picture after another behind the screen (AppSlides). */
+    private AppSlides appSlides;
     private TextView raceKicker, raceHeadline, raceSessions;
     /** game_day: each team's next game from an add-on, rotating in the race panel; null when the key is off. */
     private GameDay gameDay;
@@ -527,6 +533,14 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         heroMeta = findViewById(R.id.heroMeta);
         heroDots = findViewById(R.id.heroDots);
         heroArt = findViewById(R.id.heroArt);
+        FrameLayout slidesRoot = findViewById(R.id.root);
+        if (cfg.appSlides) appSlides = new AppSlides(this, slidesRoot, slidesRoot.indexOfChild(heroArt) + 1, cfg.slidesOffApps);
+        // READ_TV_LISTINGS is a runtime permission: without it the Watch Next and preview rows read as empty.
+        // Asked once, only when a theme turned one of the two on; the rows fill in on the next return to Home.
+        if ((cfg.continueWatchingRow || cfg.appSlides)
+                && checkSelfPermission("android.permission.READ_TV_LISTINGS") != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+            requestPermissions(new String[]{"android.permission.READ_TV_LISTINGS"}, 0);
+        }
         cinematic = cfg.cinematicHome;
         glowStyle = cfg.glowStyle;
         heroDotsShown = cfg.cinematicDots;
@@ -572,28 +586,6 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         stats = findViewById(R.id.stats);
         raceCalendar = cfg.raceCalendar;
         racePanel = findViewById(R.id.racePanel);
-        raceKicker = findViewById(R.id.raceKicker);
-        raceHeadline = findViewById(R.id.raceHeadline);
-        raceSessions = findViewById(R.id.raceSessions);
-        raceBar = findViewById(R.id.raceBar);
-        racePager = findViewById(R.id.racePager);
-        gameDay = GameDay.create(this, cfg.gameDay, handler, this::updatePanel);
-        // The rotation runs on the clock that never jumps: setting the TV's time must not stall or stretch a turn.
-        rotationStart = SystemClock.elapsedRealtime();
-        showStats = cfg.showStats;
-        inputsConnectedOnly = cfg.inputsConnectedOnly;
-        inputsCecStateOnly = cfg.inputsCecStateOnly;
-        shamsi = cfg.shamsiDate;
-        lunarDate = findViewById(R.id.lunarDate);
-        lunar = cfg.lunarDate;
-        lunarOffset = Lunar.offsetFor(cfg.lunarUtcOffset, Locale.getDefault());
-        if (lunar) lunarDate.setVisibility(View.VISIBLE);
-        greetingName = cfg.greetingName;
-        if (cfg.dateBelowClock) moveDateBelowClock();
-        if (cfg.dateBelowClock && cfg.iconOnlyButtons && !cfg.topMenu
-                && !getResources().getBoolean(R.bool.rtl_menu_bar)) {
-            alignDateBelowIconsWithClock();
-        }
         if (shamsi) {
             shamsiDate.setVisibility(View.VISIBLE);
             TextView date = findViewById(R.id.date);
@@ -760,6 +752,64 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                 }
             }
         });
+
+        if (cfg.continueWatchingRow && !singleRow) {
+            watchNext = new WatchNextRow(this, new WatchNextRow.Host() {
+                // Below the dock: Up back to the dock tile it came from, Down on into the grid.
+                @Override public void onRowUp() {
+                    // Above the dock, Up from the row goes on to the top bar, as from the dock itself.
+                    if (watchNextAbove) { View top = findViewById(R.id.btnSettings); if (top != null) top.requestFocus(); }
+                    else focusTile(lastFocused % COLUMNS);
+                }
+                @Override public void onRowDown() {
+                    if (watchNextAbove) { focusTile(lastFocused % COLUMNS); return; }
+                    int below = COLUMNS + lastFocused % COLUMNS;
+                    if (below < adapter.appCount()) focusTile(below);
+                }
+            }, findViewById(R.id.root));
+            FrameLayout.LayoutParams wlp = new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.TOP);
+            wlp.setMarginStart(Math.round(56 * getResources().getDisplayMetrics().density));
+            watchNext.view().setLayoutParams(wlp);
+            // Sits just above the dock, wherever the theme parks it; gone while the grid is scrolled up into it.
+            View row = watchNext.view();
+            // The grid's second row is pushed down by the row's height, so the row sits in the gap.
+            grid.addItemDecoration(new RecyclerView.ItemDecoration() {
+                @Override
+                public void getItemOffsets(@NonNull android.graphics.Rect out, @NonNull View v, @NonNull RecyclerView rv, @NonNull RecyclerView.State st) {
+                    int pos = rv.getChildAdapterPosition(v);
+                    if (!watchNextAbove && pos >= COLUMNS && pos < 2 * COLUMNS && watchNext.hasCards()) out.top += row.getHeight() + Math.round(8 * density);
+                }
+            });
+            row.addOnLayoutChangeListener((v, l, t, r, b, ol, ot, or, ob) -> { if (b - t != ob - ot) grid.invalidateItemDecorations(); });
+            watchNext.changed = grid::invalidateItemDecorations;
+            grid.getViewTreeObserver().addOnGlobalLayoutListener(() -> placeWatchNext(row));
+            grid.addOnScrollListener(new RecyclerView.OnScrollListener() {
+                @Override
+                public void onScrolled(@NonNull RecyclerView rv, int dx, int dy) { placeWatchNext(row); }
+            });
+        }
+        raceKicker = findViewById(R.id.raceKicker);
+        raceHeadline = findViewById(R.id.raceHeadline);
+        raceSessions = findViewById(R.id.raceSessions);
+        raceBar = findViewById(R.id.raceBar);
+        racePager = findViewById(R.id.racePager);
+        gameDay = GameDay.create(this, cfg.gameDay, handler, this::updatePanel);
+        // The rotation runs on the clock that never jumps: setting the TV's time must not stall or stretch a turn.
+        rotationStart = SystemClock.elapsedRealtime();
+        showStats = cfg.showStats;
+        inputsConnectedOnly = cfg.inputsConnectedOnly;
+        inputsCecStateOnly = cfg.inputsCecStateOnly;
+        shamsi = cfg.shamsiDate;
+        lunarDate = findViewById(R.id.lunarDate);
+        lunar = cfg.lunarDate;
+        lunarOffset = Lunar.offsetFor(cfg.lunarUtcOffset, Locale.getDefault());
+        if (lunar) lunarDate.setVisibility(View.VISIBLE);
+        greetingName = cfg.greetingName;
+        if (cfg.dateBelowClock) moveDateBelowClock();
+        if (cfg.dateBelowClock && cfg.iconOnlyButtons && !cfg.topMenu
+                && !getResources().getBoolean(R.bool.rtl_menu_bar)) {
+            alignDateBelowIconsWithClock();
+        }
 
         // game_day: the panel above the dock rides up with the cards instead of being covered by them, and fades
         // out by the time it reaches the clock. The grid's own offset is read, so a jump (Home, a restored focus)
@@ -929,6 +979,10 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         getWindow().getDecorView().getViewTreeObserver().addOnGlobalFocusChangeListener((oldF, newF) -> {
             boolean onTile = newF != null && newF.getId() == R.id.card;
             if (!onTile) hideGlass();
+            // Into Continue watching the slides stay: it is the same app's row, read on while it is in view.
+            boolean inRow = newF != null && watchNext != null && isInside(newF, watchNext.view());
+            if (!onTile && !inRow && appSlides != null) appSlides.focus(null);
+            if (!onTile && !inRow && watchNext != null) watchNext.hide();
         });
 
         packageFilter.addAction(Intent.ACTION_PACKAGE_ADDED);
@@ -1098,6 +1152,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         restartIdleClock();
         promptsPaused = false;
         if (grid.getAdapter() == null) grid.setAdapter(adapter);   // dropped by onTrimMemory
+        if (watchNext != null) watchNext.refresh();
         switch (tileRefresh.onResume(packagesChangedSinceRebuild())) {
             case REBUILD:
                 tilesReady = false;
@@ -1372,6 +1427,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     @Override
     protected void onDestroy() {
         super.onDestroy();
+        if (watchNext != null) watchNext.release();
+        if (appSlides != null) appSlides.release();
         RemoteKeys.release(this);
         cancelHoldOk();
         if (gameDay != null) gameDay.shutdown();
@@ -1794,6 +1851,11 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     @Override
     public void onTileFocused(int position, View card) {
         lastFocused = position;
+        if (appSlides != null) appSlides.focus(position < COLUMNS && !singleRow ? adapter.packageAt(position) : null);
+        if (watchNext != null) {
+            if (position < COLUMNS && !singleRow) watchNext.focusApp(adapter.packageAt(position));
+            else watchNext.hide();
+        }
         lastFocusedKey = adapter.keyAt(position);
         // Focus restored before the first layout (cold start): the tile has no size yet, and the glass
         // would be sized to 2*pad. Run again once the tile is laid out.
@@ -2416,6 +2478,44 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                 : res.getString(R.string.storage_gb_decimal, gb);
     }
 
+    private static boolean isInside(View v, View parent) {
+        for (View p = v; p != null; p = p.getParent() instanceof View ? (View) p.getParent() : null) if (p == parent) return true;
+        return false;
+    }
+
+    /** The Continue watching row's bottom a little above the dock's first tile, faded out once the grid scrolls. */
+    private void placeWatchNext(View row) {
+        RecyclerView.ViewHolder dock = grid.findViewHolderForAdapterPosition(0);
+        if (dock == null) return;
+        int[] at = new int[2];
+        dock.itemView.getLocationInWindow(at);
+        int[] mine = new int[2];
+        ((View) row.getParent()).getLocationInWindow(mine);
+        // Cards the size of the dock's tiles, lined up under them.
+        RecyclerView.ViewHolder second = grid.findViewHolderForAdapterPosition(1);
+        View tile = dock.itemView.findViewById(R.id.card);
+        if (tile != null && tile.getWidth() > 0) {
+            int[] t = new int[2];
+            tile.getLocationInWindow(t);
+            int spacing = Math.round(12 * density);
+            // From layout positions: a focused tile is scaled up, and its drawn place is off by that.
+            if (second != null) spacing = Math.abs(second.itemView.getLeft() - dock.itemView.getLeft()) - tile.getWidth();
+            watchNext.matchTiles(tile.getWidth(), tile.getHeight(), Math.max(0, spacing), t[0] - mine[0] - ((ViewGroup.MarginLayoutParams) row.getLayoutParams()).getMarginStart());
+        }
+        if (row.getHeight() == 0) return;
+        // Under the dock's band, moving with it as the grid scrolls.
+        float y = at[1] - mine[1] + dock.itemView.getHeight() + 6 * density;
+        // Whole on the screen, never cut at its bottom. With the dock parked at the bottom (rows_below_dock 0)
+        // there is no room under it: the row goes above the dock instead of over it.
+        int parentHeight = ((View) row.getParent()).getHeight();
+        if (!grid.canScrollVertically(-1) || grid.computeVerticalScrollOffset() == 0) {
+            float bottom = parentHeight - row.getHeight() - 18 * density;
+            watchNextAbove = y > bottom;
+            if (watchNextAbove) y = at[1] - mine[1] - row.getHeight() - 14 * density;
+        }
+        if (Math.abs(row.getTranslationY() - y) > 0.5f) row.setTranslationY(y);
+    }
+
     // ---- navigation ------------------------------------------------------------------------------
 
     @Override
@@ -2448,8 +2548,20 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             return GridNavigation.atHorizontalEdge(position, rowCount, COLUMNS,
                     rtlAppGrid, keyCode == KeyEvent.KEYCODE_DPAD_LEFT);
         }
+        if (keyCode == (watchNextAbove ? KeyEvent.KEYCODE_DPAD_UP : KeyEvent.KEYCODE_DPAD_DOWN)
+                && position < COLUMNS && watchNext != null && watchNext.hasCards()) {
+            // dock row: into Continue watching, under it (or above it, with the dock at the bottom)
+            watchNext.focusFirst();
+            grid.playSoundEffect(SoundEffectConstants.NAVIGATION_DOWN);
+            return true;
+        }
         if (keyCode == KeyEvent.KEYCODE_DPAD_UP) {
             if (position < COLUMNS) return false;          // dock row: let focus move to the top bar
+            if (!watchNextAbove && position < 2 * COLUMNS && watchNext != null && watchNext.hasCards()) {
+                watchNext.focusFirst();                    // the grid's first row: up into Continue watching
+                grid.playSoundEffect(SoundEffectConstants.NAVIGATION_UP);
+                return true;
+            }
             target = position - COLUMNS;
         } else {
             int lastRowStart = ((count - 1) / COLUMNS) * COLUMNS;

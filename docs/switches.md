@@ -26,6 +26,10 @@ rule sit on its wanted list until a screenshot arrives.
 
 | Key | Screenshot |
 |---|---|
+| `continue_watching_row` | <img src="switches/continue_watching_row.jpg" width="320" alt="continue_watching_row on a TV, the cards blurred"> |
+| `app_slides` | <img src="switches/continue_watching_row.jpg" width="320" alt="app_slides on a TV: the focused app's title behind Home"> |
+| `slides_off_apps` | <img src="switches/slides_off_apps.jpg" width="320" alt="slides_off_apps on a TV: the wallpaper behind the focused app"> |
+| `screensaver_photos` | <img src="switches/screensaver_photos.jpg" width="320" alt="screensaver_photos on a TV, the photo blurred, its photographer under the buttons"> |
 | `columns` | <img src="../themes/six-columns/screenshot.jpg" width="320" alt="columns on a TV"> |
 | `glass_style` | <img src="switches/glass_style.jpg" width="320" alt="glass_style halo on a TV"> |
 | `sky_intensity` | <img src="sky-sunset.jpg" width="320" alt="sky_intensity on a TV"> |

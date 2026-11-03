@@ -152,4 +152,7 @@
     <string name="clock_format_system">מערכת</string>
     <string name="clock_format_12">12 שעות</string>
     <string name="clock_format_24">24 שעות</string>
+    <string name="watch_next">המשך צפייה</string>
+    <string name="google_home_restore">החזרת מסך הבית של Google TV</string>
+    <string name="google_home_restore_help">פותח את דף פרטי האפליקציה שלו. לחצו Enable, ואז בחרו ב-Google TV תחת Default home למעלה. המפעיל הזה חוזר באותה דרך.</string>
 </resources>

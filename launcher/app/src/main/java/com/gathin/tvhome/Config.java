@@ -429,6 +429,15 @@ final class Config {
         return ctx.getExternalFilesDir(null);
     }
 
+    /** continue_watching_row: under the dock, the focused dock app's Continue watching (WatchNextRow). */
+    boolean continueWatchingRow;
+    /** app_slides: behind Home, the focused dock app's preview channel as slides (AppSlides). */
+    boolean appSlides;
+    /** screensaver_photos: Google's Ambient Mode photos in the wallpaper rotation, each once (BackdropPhotos). */
+    boolean screensaverPhotos;
+    /** slides_off_apps: dock apps whose channel pictures stay off the screen, the wallpaper showing instead. */
+    List<String> slidesOffApps = Collections.emptyList();
+
     static Config load(Context ctx) {
         Resources res = ctx.getResources();
         List<String> dock = new ArrayList<>(Arrays.asList(res.getStringArray(R.array.dock_apps)));
@@ -701,7 +710,7 @@ final class Config {
         Festival festival = json == null ? Festival.NONE : Festival.parse(festivalName(json),
                 string(json, "festival_until", ""), string(json, "greeting", ""), string(json, "accent_color", ""));
 
-        return new Config(dock, fillDock, hidden, libraryApps, libraryExcludedApps, liveTv, liveTvAction, liveTvInputId, packageMap(launchActions), packageMap(appLabels),
+        Config made = new Config(dock, fillDock, hidden, libraryApps, libraryExcludedApps, liveTv, liveTvAction, liveTvInputId, packageMap(launchActions), packageMap(appLabels),
                 packageMap(appBanners), panelService, panelAction, panelExtra, coocaaSources, inputAction, inputSources, inputUriScheme, Math.max(1, columns),
                 Math.max(0, rowsBelow), animations, advancedEffects, shamsi, greetingName, moduleCards, reducedMotion, bootToLiveTv,
                 openOnStartChoice, dockTitle, dockRow, topMenu, launcherSettingsButton, reorderButton, showNetworkPill, showInputsPill,
@@ -716,6 +725,12 @@ final class Config {
                 Math.max(0, Math.min(90, clockWallpaperDim)), clockGlow, glassStyle, singleRow && dockRow, dockBandAll, lunar, lunarOffset,
                 dateBelowClock, vpnPill, locale, powerOnHomeAlways, inputsConnectedOnly, inputsCecStateOnly,
                 Math.max(0, Math.min(600, openOnStartNetworkWait)), openOnStartOnWake, iconOnlyVpn, clockFormat, backOpensClock, glowSnap);
+        // Off unless a theme turns them on (themes/README.md): this fork's network and Watch Next features.
+        made.continueWatchingRow = json != null && bool(json, "continue_watching_row", false);
+        made.appSlides = json != null && bool(json, "app_slides", false);
+        made.screensaverPhotos = json != null && bool(json, "screensaver_photos", false);
+        made.slidesOffApps = json == null ? Collections.emptyList() : stringList(json, "slides_off_apps", new ArrayList<>());
+        return made;
     }
 
     /**

@@ -170,6 +170,14 @@ public final class LauncherSettingsActivity extends Activity {
         });
         findViewById(R.id.defaultHomeChoice).setOnClickListener(v ->
                 open(new Intent(this, HomeSettingsActivity.class)));
+        // Google TV's own home, switched off so this launcher is the TV's home: one way back to it from the TV.
+        Intent googleHome = googleHomeInfo();
+        if (googleHome != null) {
+            View row = findViewById(R.id.googleHomeChoice);
+            row.setVisibility(View.VISIBLE);
+            findViewById(R.id.googleHomeHelp).setVisibility(View.VISIBLE);
+            row.setOnClickListener(v -> open(googleHome));
+        }
         findViewById(R.id.tvSettingsChoice).setOnClickListener(v ->
                 open(SystemSettings.intent(this, Settings.ACTION_SETTINGS)));
         refresh();
@@ -325,6 +333,19 @@ public final class LauncherSettingsActivity extends Activity {
                 || choices.contains("animations") || choices.contains("advanced_effects")
                 || choices.contains(Config.WALLPAPER_CHOICE_KEY) || choices.contains(Config.DOCK_OPACITY_KEY)
                 || choices.contains(Config.CLOCK_FORMAT_KEY) || choices.contains(OpenOnStart.KEY);
+    }
+
+    /** App info of Google TV's home when it is on the TV but switched off; null otherwise. */
+    private Intent googleHomeInfo() {
+        String pkg = "com.google.android.apps.tv.launcherx";
+        try {
+            android.content.pm.ApplicationInfo info = getPackageManager().getApplicationInfo(pkg,
+                    android.content.pm.PackageManager.MATCH_DISABLED_COMPONENTS);
+            if (info.enabled) return null;
+        } catch (android.content.pm.PackageManager.NameNotFoundException absent) {
+            return null;
+        }
+        return SystemSettings.appInfo(this, pkg);
     }
 
     private void open(Intent intent) {

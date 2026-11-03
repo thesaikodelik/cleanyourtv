@@ -158,4 +158,7 @@
     <string name="clock_format_system">System</string>
     <string name="clock_format_12">12-hour</string>
     <string name="clock_format_24">24-hour</string>
+    <string name="watch_next">Continue watching</string>
+    <string name="google_home_restore">Bring back the Google TV home screen</string>
+    <string name="google_home_restore_help">Opens its App info page. Press Enable, then choose Google TV under Default home above. This launcher comes back the same way.</string>
 </resources>

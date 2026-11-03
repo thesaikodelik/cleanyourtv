@@ -33,6 +33,10 @@ import java.util.concurrent.Executors;
 final class WallpaperPlayer {
     private final FrameLayout root;
     private final ImageView image;
+    /** The picture before, fading out over the new one's start; the two swap at every change. */
+    private ImageView behind;
+    private ImageView front;
+    private Bitmap previousBitmap;
     private final int backgroundColor;
     private final List<File> files;
     private final long interval;
@@ -61,6 +65,8 @@ final class WallpaperPlayer {
     private final String latitude, longitude;
     private LocalDate sunDay;
     private int[] sun;
+    /** screensaver_photos: Google's Ambient Mode photos, each new, ahead of the theme's own pictures; null when off. */
+    private final BackdropPhotos backdrop;
 
     WallpaperPlayer(Context context, FrameLayout root, Config config) {
         this.root = root;
@@ -82,17 +88,20 @@ final class WallpaperPlayer {
             preferences.edit().putString("collection", collection)
                     .remove("image").remove("changed").apply();
         }
+        backdrop = config.screensaverPhotos && config.wallpaperEnabled && !files.isEmpty() ? BackdropPhotos.get(context) : null;
         DisplayMetrics metrics = context.getResources().getDisplayMetrics();
         width = metrics.widthPixels;
         height = metrics.heightPixels;
-        image = new ImageView(context);
-        image.setScaleType(ImageView.ScaleType.CENTER_CROP);
-        image.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
+        image = picture(context);
+        behind = picture(context);
+        front = image;
         names = config.wallpaperCaptions && config.wallpaperEnabled && !files.isEmpty()
                 ? WallpaperCaptions.read(files.get(0).getParentFile()) : Collections.emptyMap();
         caption = names.isEmpty() ? null : makeCaption(context, root);
         if (config.wallpaperEnabled && !files.isEmpty()) {
             root.addView(image, 0, new FrameLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+            root.addView(behind, 0, new FrameLayout.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
             showFirst();
         }
@@ -107,6 +116,7 @@ final class WallpaperPlayer {
         String previous = preferences.getString("image", "");
         List<File> playable = playable();
         File first = WallpaperRotation.find(playable, previous);
+        if (first == null && backdrop != null && BackdropPhotos.owns(previous)) first = backdrop.file(previous);
         if (first == null) first = WallpaperRotation.pick(playable, previous, order, random);
         while (first != null) {
             Bitmap bitmap = decode(first);
@@ -140,7 +150,11 @@ final class WallpaperPlayer {
     /** Drops the wallpaper texture when Home is hidden and Android asks the process to free memory. */
     void releaseForMemoryPressure() {
         if (current == null) return;
-        image.setImageDrawable(null);
+        front.animate().cancel();
+        behind.animate().cancel();
+        front.setImageDrawable(null);
+        behind.setImageDrawable(null);
+        previousBitmap = null;
         // The renderer may still have a queued frame that references this hardware bitmap. Drop our references and
         // let Android reclaim its native buffer after rendering releases it instead of recycling it mid-frame.
         current = null;
@@ -171,9 +185,12 @@ final class WallpaperPlayer {
         // A picture outside the time of day's group (the group changed) is replaced at once, not after the interval.
         List<File> playable = playable();
         File selected = WallpaperRotation.find(playable, previous);
+        if (selected == null && backdrop != null && BackdropPhotos.owns(previous)) selected = backdrop.file(previous);
         long changed = preferences.getLong("changed", 0);
         if (selected == null || WallpaperRotation.due(changed, System.currentTimeMillis(), interval)) {
-            selected = WallpaperRotation.pick(playable, previous, order, random);
+            // A new screensaver photo when one is ready; the theme's pictures when none is (no network).
+            File fresh = backdrop == null ? null : backdrop.take();
+            selected = fresh != null ? fresh : WallpaperRotation.pick(playable, previous, order, random);
         }
         if (selected == null || selected.getName().equals(displayed)) return;
         File next = selected;
@@ -187,6 +204,7 @@ final class WallpaperPlayer {
                     return;
                 }
                 if (bitmap == null) {
+                    if (BackdropPhotos.owns(next.getName())) { next.delete(); update(); return; }
                     files.remove(next);
                     Log.w("TvHome.Wallpaper", "Skipping unreadable image: " + next.getName());
                     update();
@@ -194,6 +212,7 @@ final class WallpaperPlayer {
                 }
                 show(bitmap);
                 displayed = next.getName();
+                if (backdrop != null && BackdropPhotos.owns(displayed)) backdrop.shown(displayed);
                 showCaption(true);
                 if (!displayed.equals(previous) || changed == 0) {
                     preferences.edit().putString("image", displayed)
@@ -210,9 +229,11 @@ final class WallpaperPlayer {
     private static TextView makeCaption(Context context, FrameLayout root) {
         float dp = context.getResources().getDisplayMetrics().density;
         TextView text = new TextView(context);
+        // AppSlides hides it while a title's own name stands in its place.
+        text.setTag("wallpaperCaption");
         text.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15);
         text.setTextColor(0xD9FFFFFF);
-        text.setShadowLayer(6 * dp, 0, dp, 0xCC000000);
+        // No shadow, as the date beside it: the blurred one read as a smudge behind the words.
         text.setSingleLine(true);
         text.setEllipsize(TextUtils.TruncateAt.END);
         text.setMaxWidth(Math.round(520 * dp));
@@ -234,7 +255,7 @@ final class WallpaperPlayer {
     /** The displayed picture's name, faded across a change; a picture without a name hides the caption. */
     private void showCaption(boolean fade) {
         if (caption == null) return;
-        String name = names.get(displayed);
+        String name = backdrop != null && BackdropPhotos.owns(displayed) ? backdrop.caption(displayed) : names.get(displayed);
         caption.animate().cancel();
         if (name == null) {
             caption.setAlpha(0f);
@@ -259,14 +280,56 @@ final class WallpaperPlayer {
         return key.toString();
     }
 
-    /** Puts a picture on screen and releases the previous one after a frame has drawn the new one. */
+    /** How long one picture takes to fade in over the last, and how far it zooms while it is up. */
+    private static final long FADE_MS = 2500;
+    private static final float ZOOM = 1.08f;
+
+    private static ImageView picture(Context context) {
+        ImageView v = new ImageView(context);
+        v.setScaleType(ImageView.ScaleType.CENTER_CROP);
+        v.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
+        // Zoom and fade are then the compositor's work, not a redraw of the picture each frame.
+        v.setLayerType(View.LAYER_TYPE_HARDWARE, null);
+        return v;
+    }
+
+    /**
+     * Puts a picture on screen: it fades in over the last one instead of replacing it at once, and zooms in very
+     * slowly while it is up. The picture before is released once it has faded out.
+     */
     private void show(Bitmap bitmap) {
-        Bitmap old = current;
+        Bitmap old = previousBitmap;
+        previousBitmap = current;
         current = bitmap;
         // The wallpaper covers the whole root; avoid drawing the fallback colour under it.
         root.setBackground(null);
-        image.setImageBitmap(bitmap);
-        if (old != null && old != bitmap) image.postDelayed(old::recycle, 500);
+        ImageView in = behind, out = front;
+        boolean first = out.getDrawable() == null;
+        in.animate().cancel();
+        in.setImageBitmap(bitmap);
+        in.setScaleX(1f);
+        in.setScaleY(1f);
+        in.setAlpha(first ? 1f : 0f);
+        // Just over the other picture, still under the dock and everything else.
+        root.removeView(in);
+        root.addView(in, 1);
+        long up = Math.max(interval, 60_000L) + FADE_MS * 2;
+        in.animate().alpha(1f).setDuration(first ? 0 : FADE_MS).withEndAction(() -> {
+            if (in != front) return;
+            out.animate().cancel();
+            out.setImageDrawable(null);
+        }).start();
+        // A separate animator would cancel the fade: the zoom runs on its own property animators.
+        android.animation.ObjectAnimator zx = android.animation.ObjectAnimator.ofFloat(in, View.SCALE_X, 1f, ZOOM);
+        android.animation.ObjectAnimator zy = android.animation.ObjectAnimator.ofFloat(in, View.SCALE_Y, 1f, ZOOM);
+        android.animation.AnimatorSet zoom = new android.animation.AnimatorSet();
+        zoom.playTogether(zx, zy);
+        zoom.setDuration(up);
+        zoom.setInterpolator(new android.view.animation.LinearInterpolator());
+        zoom.start();
+        behind = out;
+        front = in;
+        if (old != null && old != bitmap && old != previousBitmap) image.postDelayed(old::recycle, FADE_MS + 500);
     }
 
     private Bitmap decode(File file) {

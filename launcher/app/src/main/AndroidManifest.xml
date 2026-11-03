@@ -7,6 +7,11 @@
     <uses-feature android:name="android.hardware.wifi" android:required="false" />
     <uses-feature android:name="android.hardware.location.gps" android:required="false" />
 
+    <!-- Continue watching (continue_watching_row) and the app slides (app_slides) read other apps' searchable
+         Watch Next and preview rows; their pictures, and the screensaver photos (screensaver_photos), come over
+         the network. All three are off unless a theme turns them on. -->
+    <uses-permission android:name="android.permission.READ_TV_LISTINGS" />
+    <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
     <!-- Needed since Android 10 to read the Wi-Fi network name for the network pill. Never requested at

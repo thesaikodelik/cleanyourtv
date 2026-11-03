@@ -67,6 +67,9 @@ The launcher's own page has these rows, top to bottom:
   clears them too.
 - **Choose default home** opens Android's home picker, and **TV system settings** the TV's own settings
   page.
+- **Bring back the Google TV home screen**, only while Google TV's own home
+  (`com.google.android.apps.tv.launcherx`) is switched off: its App info page, where Enable brings it back,
+  to be chosen in the home picker afterwards.
 
 **Change the default home:** Launcher settings and the optional Default-home tile
 (`show_home_settings_shortcut`) open Android's home picker. Choose the original launcher to stop using

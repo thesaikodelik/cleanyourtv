@@ -165,6 +165,23 @@
             android:textSize="14sp" />
 
         <TextView
+            android:id="@+id/googleHomeChoice"
+            style="@style/SettingsRow"
+            android:layout_marginTop="18dp"
+            android:visibility="gone"
+            android:text="@string/google_home_restore" />
+
+        <TextView
+            android:id="@+id/googleHomeHelp"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="7dp"
+            android:visibility="gone"
+            android:text="@string/google_home_restore_help"
+            android:textColor="#FFACB8C1"
+            android:textSize="14sp" />
+
+        <TextView
             android:id="@+id/tvSettingsChoice"
             style="@style/SettingsRow"
             android:layout_marginTop="18dp"
