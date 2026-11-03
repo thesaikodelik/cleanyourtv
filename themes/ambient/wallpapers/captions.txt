@@ -1,4 +1,5 @@
-002.jpg	Autumn reflections, Loch Tummel, Scotland - Eric Kilby, CC BY-SA 4.0
-006.jpg	Autumn calm lake, Ossiacher See Austria - Johann Jaritz, CC BY-SA 4.0
-007.jpg	Winter frosted forest at sunrise, Karula Estonia - Amadvr, CC BY-SA 3.0
-012.jpg	Kuang Si turquoise pool, Laos - Basile Morin, CC BY-SA 4.0
+01-northern-europe-sunrise.jpg	Sunrise and aurora over northern Europe · NASA, Expedition 43
+03-aurora-red-and-green.jpg	Aurora borealis over the Earth · NASA, Expedition 72
+04-orbital-sunset.jpg	Sunset from the International Space Station · NASA, Expedition 23
+05-nile-at-night.jpg	The Nile from Luxor to Cairo at night · NASA, Expedition 73
+08-aurora-australis.jpg	Aurora australis over the Indian Ocean · NASA, Expedition 62

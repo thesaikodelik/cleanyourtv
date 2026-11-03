@@ -1,17 +1,17 @@
-The four fallback wallpapers (shown when the screensaver photos cannot be fetched) are from nature-calm: photos from Wikimedia Commons, each under its own licence (CC BY or CC BY-SA), not the repository's MIT licence.
-Changes made to every picture: cropped to 16:9, resized (1920x1080, or a little smaller to stay under 300 KB) and darkened toward the bottom and left edges so the dock
-and text stay readable. Adaptations of the CC BY-SA pictures stay under CC BY-SA.
+The five fallback wallpapers, shown while the screensaver photos cannot be fetched, are from the aerial theme. Photographs taken by NASA astronauts on the International Space Station, from Wikimedia Commons. Each is
+cropped to 16:9, resized to 1920x1080 and darkened behind the clock, the buttons and the dock. NASA
+photographs are in the public domain; NASA is credited as the source and does not endorse this project.
 
-- 002.jpg: "Foggy Reflections - Loch Tummel.jpg" by Eric Kilby, CC BY-SA 4.0
-  https://commons.wikimedia.org/wiki/File:Foggy_Reflections_-_Loch_Tummel.jpg
-- 006.jpg: "Steindorf am Ossiacher See Sankt Urban Ossiacher See und Dobratsch 04112015 2185.jpg" by Johann Jaritz, CC BY-SA 4.0
-  https://commons.wikimedia.org/wiki/File:Steindorf_am_Ossiacher_See_Sankt_Urban_Ossiacher_See_und_Dobratsch_04112015_2185.jpg
-- 007.jpg: "Karula vaade.jpg" by Amadvr, CC BY-SA 3.0
-  https://commons.wikimedia.org/wiki/File:Karula_vaade.jpg
-- 012.jpg: "Kuang Si Falls and a turquoise water pool in Luang Prabang province Laos.jpg" by Basile Morin, CC BY-SA 4.0
-  https://commons.wikimedia.org/wiki/File:Kuang_Si_Falls_and_a_turquoise_water_pool_in_Luang_Prabang_province_Laos.jpg
 
-Licences: CC BY 4.0 https://creativecommons.org/licenses/by/4.0/ , CC BY-SA 4.0 https://creativecommons.org/licenses/by-sa/4.0/ ,
-CC BY-SA 3.0 https://creativecommons.org/licenses/by-sa/3.0/
+- 01-northern-europe-sunrise.jpg: "ISS-43 Earth sunrise, aurora and sparling cities in northern Europe" by NASA (ISS Expedition 43), public domain
+  https://commons.wikimedia.org/wiki/File:ISS-43_Earth_sunrise,_aurora_and_sparling_cities_in_northern_Europe.jpg
+- 03-aurora-red-and-green.jpg: "The aurora borealis blankets the Earth (iss072e159172)" by NASA (ISS Expedition 72), public domain
+  https://commons.wikimedia.org/wiki/File:The_aurora_borealis_blankets_the_Earth_(iss072e159172).jpg
+- 04-orbital-sunset.jpg: "Sunset from the ISS" by NASA (ISS Expedition 23), public domain
+  https://commons.wikimedia.org/wiki/File:Sunset_from_the_ISS.JPG
+- 05-nile-at-night.jpg: "Egypt’s Nile River stretches from Luxor to Cairo (iss073e0422271)" by NASA (ISS Expedition 73), public domain
+  https://commons.wikimedia.org/wiki/File:Egypt%E2%80%99s_Nile_River_stretches_from_Luxor_to_Cairo_(iss073e0422271).jpg
+- 08-aurora-australis.jpg: "ISS-62 Aurora australis over the Indian Ocean" by NASA (ISS Expedition 62), public domain
+  https://commons.wikimedia.org/wiki/File:ISS-62_Aurora_australis_over_the_Indian_Ocean.jpg
 
 The screensaver photos themselves are not in this repository: the launcher fetches them on the TV from Google's public Chromecast backdrop page, each with its photographer's name, as the TV's own Ambient Mode shows them.
